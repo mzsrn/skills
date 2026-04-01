@@ -73,6 +73,10 @@ The server returns **random** addresses on each call. Response structure:
 
 ## Finding a working proxy
 
+**Important:** These are free community proxies — they are slow. Finding and
+validating a working proxy may take 1-2 minutes. Inform the user that the
+search is in progress and ask them to be patient.
+
 Proxies go up and down. The agent MUST validate before use:
 
 ### Using the helper script

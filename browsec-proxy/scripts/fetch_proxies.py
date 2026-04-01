@@ -53,7 +53,7 @@ def extract_proxies(data: dict, country: str | None = None) -> list[dict]:
     return proxies
 
 
-def check_proxy(proxy: dict, timeout: float = 10.0) -> bool:
+def check_proxy(proxy: dict, timeout: float = 90.0) -> bool:
     """Verify proxy forwards traffic by making an HTTP request through it."""
     host, port = proxy["host"], proxy["port"]
     proxy_url = f"https://{host}:{port}"
@@ -66,7 +66,7 @@ def check_proxy(proxy: dict, timeout: float = 10.0) -> bool:
         return False
 
 
-def validate_proxies(proxies: list[dict], timeout: float = 10.0) -> list[dict]:
+def validate_proxies(proxies: list[dict], timeout: float = 90.0) -> list[dict]:
     """Return only proxies that actually forward requests."""
     if not proxies:
         return []
@@ -85,6 +85,7 @@ def main() -> None:
     parser.add_argument("--limit", type=int, default=0, help="Max proxies to return (0 = all)")
     parser.add_argument("--validate", action="store_true", help="Only return working proxies")
     parser.add_argument("--json", action="store_true", help="Output JSON")
+    parser.add_argument("--timeout", type=float, default=30.0, help="Validation timeout per proxy in seconds (default 30)")
     args = parser.parse_args()
 
     data = fetch_servers()
@@ -95,7 +96,7 @@ def main() -> None:
         sys.exit(1)
 
     if args.validate:
-        proxies = validate_proxies(proxies)
+        proxies = validate_proxies(proxies, timeout=args.timeout)
         if not proxies:
             print("All proxies failed validation.", file=sys.stderr)
             sys.exit(1)
