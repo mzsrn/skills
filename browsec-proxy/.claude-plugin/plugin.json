@@ -1,0 +1,13 @@
+{
+  "name": "browsec-proxy",
+  "version": "0.2.0",
+  "description": "Fetch and validate HTTPS proxies from the Browsec VPN API for geo-aware agent tasks like localized pricing, travel booking, regional availability checks, and geo-restricted content access",
+  "author": {
+    "name": "mzsrn",
+    "url": "https://github.com/mzsrn"
+  },
+  "homepage": "https://github.com/mzsrn/skills",
+  "repository": "https://github.com/mzsrn/skills",
+  "license": "MIT",
+  "keywords": ["proxy", "vpn", "geo", "pricing", "localization", "browsec", "travel"]
+}
