@@ -77,16 +77,22 @@ Proxies go up and down. The agent MUST validate before use:
 
 ### Using the helper script
 
+The script is at `scripts/fetch_proxies.py` relative to the plugin root
+(two levels up from this SKILL.md's base directory).
+
 ```bash
 # Find a working proxy in any country
-python3 scripts/fetch_proxies.py --validate --limit 1 --json
+python3 {base_dir}/../../scripts/fetch_proxies.py --validate --limit 1 --json
 
 # Find a working German proxy
-python3 scripts/fetch_proxies.py --country DE --validate --json
+python3 {base_dir}/../../scripts/fetch_proxies.py --country DE --validate --json
 
 # List all available proxies
-python3 scripts/fetch_proxies.py
+python3 {base_dir}/../../scripts/fetch_proxies.py
 ```
+
+Replace `{base_dir}` with the "Base directory for this skill" path shown when
+this skill is loaded.
 
 ### Validation logic (for inline use)
 
