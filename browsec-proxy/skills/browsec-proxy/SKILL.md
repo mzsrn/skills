@@ -15,6 +15,24 @@ description: >
 Fetch and validate HTTPS proxies from the Browsec VPN API so agents can route
 requests through specific countries.
 
+## Agent behavior
+
+**Do NOT explain the proxy-fetching process to the user.** Fetch and validate
+proxies silently as an internal step. The user should only see the final result
+of the task they asked for (e.g. localized prices, geo-restricted content),
+not the proxy plumbing. Before starting validation, warn the user once:
+"These are free Browsec proxies — they can be slow. This may take 1-2
+minutes." Then stay silent until you have results.
+
+**Do NOT use WebFetch, Fetch, or raw curl commands. Do NOT call any API URLs
+directly. ALL operations go through the bundled `fetch_proxies.sh` script —
+it handles API calls, validation, and proxied requests internally.**
+
+**Do NOT pipe script output into python3, jq, node, or any other tool.
+You are an LLM — read the JSON output yourself and extract what you need.
+This rule applies to ALL calls including retries. Never fall back to python
+or other tools even when previous attempts fail.**
+
 ## Use cases
 
 - **Geo-blocked content** — access websites, APIs, and services restricted to
@@ -36,130 +54,76 @@ requests through specific countries.
 - **Market research** — scrape localized product catalogs, competitor pricing,
   and regional promotions without being blocked.
 
-## API
+## How to use
 
-The proxy list is available at:
+Replace `{base_dir}` with the base directory path shown when this skill is
+loaded. The script path includes `../../` to reach the plugin root from there.
 
-```
-https://browsec.com/api/v1/servers?uc=ru&stdomains=1
-```
-
-The server returns **random** addresses on each call. Response structure:
-
-```json
-{
-  "countries": {
-    "us": {
-      "servers": [
-        {"host": "us31.swiftcdn.org", "port": 6375}
-      ],
-      "premium_servers": [
-        {"host": "us205.speedycdn.space", "port": 11913}
-      ]
-    }
-  },
-  "recommended_countries": {
-    "free": ["de", "lv", "lt"],
-    "premium": ["at", "de", "fi", "nl", "us", ...]
-  }
-}
-```
-
-- `servers` — free tier (typically port 443), **use these**
-- `premium_servers` — premium tier (requires auth, not yet supported)
-- Proxies are **HTTPS proxies** — connection to proxy via TLS
-- Support both `http://` targets (fast, forward proxy) and `https://` targets
-  (CONNECT tunnel, slower)
-
-## Finding a working proxy
-
-**Important:** These are free community proxies — they are slow. Finding and
-validating a working proxy may take 1-2 minutes. Inform the user that the
-search is in progress and ask them to be patient.
-
-Proxies go up and down. The agent MUST validate before use:
-
-### Using the helper script
-
-The script is at `scripts/fetch_proxies.py` relative to the plugin root
-(two levels up from this SKILL.md's base directory).
+### Step 1 — Get the proxy list
 
 ```bash
-# Find a working proxy in any country
-python3 {base_dir}/../../scripts/fetch_proxies.py --validate --limit 1 --json
-
-# Find a working German proxy
-python3 {base_dir}/../../scripts/fetch_proxies.py --country DE --validate --json
-
-# List all available proxies
-python3 {base_dir}/../../scripts/fetch_proxies.py
+bash {base_dir}/../../scripts/fetch_proxies.sh --list
 ```
 
-Replace `{base_dir}` with the "Base directory for this skill" path shown when
-this skill is loaded.
+Returns raw JSON with all countries. Parse it yourself — extract `host` and
+`port` from the `"servers"` arrays for the country you need (free tier).
+Skip `"premium_servers"` (requires auth).
 
-### Validation logic (for inline use)
+### Step 2 — Validate and fetch
 
-```python
-import json
-import urllib.request
+Pass extracted host:port pairs to the script to validate and fetch in one call:
 
-API_URL = "https://browsec.com/api/v1/servers?uc=ru&stdomains=1"
-
-# 1. Fetch proxy list
-data = json.loads(urllib.request.urlopen(API_URL, timeout=15).read())
-
-# 2. Collect proxies for a country (e.g. "nl")
-country = data["countries"].get("nl", {})
-servers = country.get("servers", [])  # free tier only
-
-# 3. Find first working proxy by making a real HTTP request through it
-def is_alive(host, port, timeout=10):
-    proxy_url = f"https://{host}:{port}"
-    handler = urllib.request.ProxyHandler({"http": proxy_url})
-    opener = urllib.request.build_opener(handler)
-    try:
-        return opener.open("http://httpbin.org/ip", timeout=timeout).status == 200
-    except Exception:
-        return False
-
-working = None
-for srv in servers:
-    if is_alive(srv["host"], srv["port"]):
-        working = srv
-        break
-```
-
-## Using a proxy
-
-```python
-import urllib.request
-
-proxy_url = f"https://{working['host']}:{working['port']}"
-handler = urllib.request.ProxyHandler({"https": proxy_url})
-opener = urllib.request.build_opener(handler)
-
-resp = opener.open("https://example.com", timeout=15)
-```
-
-With curl:
 ```bash
-curl -x https://host:port https://example.com
+bash {base_dir}/../../scripts/fetch_proxies.sh --url "https://example.com" host1:port1 host2:port2
 ```
 
-## Rotation strategy
+Prints the response body fetched through the first working proxy.
+Empty stdout means all proxies are dead or the fetch failed.
 
-1. Fetch several proxies for the target country.
-2. Validate each one (TLS handshake).
-3. Use the first working proxy.
-4. On failure mid-request, try the next one.
-5. If all fail, re-fetch (the API returns random servers each time) and retry.
-6. If still failing, inform the user.
+To just find a working proxy without fetching:
+
+```bash
+bash {base_dir}/../../scripts/fetch_proxies.sh host1:port1 host2:port2
+```
+
+Prints `host:port` of the first working proxy.
+
+**Options:**
+- `--all` — print all working proxies (without `--url`)
+- `--timeout S` — validation timeout per proxy (default 29s)
+- `--url-timeout S` — fetch timeout for `--url` (default 60s)
+
+**Exit code is always 0** — check stdout for results.
+
+## Retry strategy
+
+If validation returns empty stdout (all dead) or times out:
+
+1. Call `--list` again (the API returns different random servers each time).
+2. Extract new host:port pairs yourself (you are an LLM, read the JSON).
+3. Call the script again with the new candidates.
+4. After 3 failed rounds, inform the user that no working proxies are
+   available for this country right now. Suggest trying a different country.
 
 ## Countries with free servers
 
 The API typically provides free servers for: **DE, LT, LV, NL, SG, UK, US**.
 All other countries usually require premium tier.
+
+## Required permissions (Claude Code)
+
+For silent operation in Claude Code, the user's `settings.json` should include:
+
+```json
+"permissions": {
+  "allow": [
+    "Bash(bash */fetch_proxies.sh *)"
+  ]
+}
+```
+
+Without these, Claude Code will prompt on each call. The user can select
+"Yes, and don't ask again" to auto-approve for the session.
 
 ## Error handling
 

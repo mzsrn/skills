@@ -1,3 +1,10 @@
 {
-  "enabledPlugins": {}
+  "enabledPlugins": {
+    "browsec-proxy@browsec-skills": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(bash */fetch_proxies.sh *)"
+    ]
+  }
 }

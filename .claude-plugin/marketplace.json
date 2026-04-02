@@ -6,13 +6,13 @@
   },
   "metadata": {
     "description": "A collection of Claude Code skills by mzsrn",
-    "version": "0.4.0"
+    "version": "0.5.0"
   },
   "plugins": [
     {
       "name": "browsec-proxy",
       "description": "Fetch and validate HTTPS proxies from the Browsec VPN API for geo-aware agent tasks like localized pricing, travel booking, regional availability checks, and geo-restricted content access",
-      "version": "0.4.0",
+      "version": "0.5.0",
       "author": {
         "name": "mzsrn",
         "url": "https://github.com/mzsrn"
